@@ -1,6 +1,5 @@
 --------------------------------------------------------------------------------
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ViewPatterns #-}
 import           Data.Monoid (mappend)
 import           Hakyll
 
@@ -22,26 +21,29 @@ main = hakyll $ do
             >>= loadAndApplyTemplate "templates/default.html" defaultContext
             >>= relativizeUrls
 
-    -- Posts pages
-    match "posts/*" $ do
-        route $ setExtension "html"
-        compile $ do
-            i   <- pandocCompiler
-            tgs <- getTags (itemIdentifier i)
-            let postTagsCtx = postCtxWithTags tgs
-            loadAndApplyTemplate "templates/post.html" postTagsCtx i
-                >>= loadAndApplyTemplate "templates/posts-default.html" postTagsCtx
-                >>= relativizeUrls
-
-    -- All posts page
-    create ["posts.html"] $ compilePosts "Posts" "templates/posts.html" "posts/*"
-
     -- build up tags
     tags <- buildTags "posts/*" (fromCapture "tags/*.html")
 
     tagsRules tags $ \tag pattern -> do
         let title = "Posts tagged \"" ++ tag ++ "\""
-        compilePosts title "templates/tag.html" pattern
+        route idRoute
+        compile $ do
+            posts <- recentFirst =<< loadAll pattern
+            let ctx = constField "title" title
+                      `mappend` listField "posts" postCtx (return posts)
+                      `mappend` defaultContext
+
+            makeItem ""
+                >>= loadAndApplyTemplate "templates/tag.html" ctx
+                >>= loadAndApplyTemplate "templates/default.html" ctx
+                >>= relativizeUrls
+
+    match "posts/*" $ do
+        route $ setExtension "html"
+        compile $ pandocCompiler
+            >>= loadAndApplyTemplate "templates/post.html"    (postCtxWithTags tags)
+            >>= loadAndApplyTemplate "templates/default.html" (postCtxWithTags tags)
+            >>= relativizeUrls
 
     create ["archive.html"] $ do
         route idRoute
@@ -81,7 +83,5 @@ postCtx =
     dateField "date" "%B %e, %Y" `mappend`
     defaultContext
 
-postCtxWithTags :: [String] -> Context String
-postCtxWithTags tags = listField "tagsList" (field "tag" $ pure . itemBody) (traverse makeItem tags)
-    <> postCtx
-
+postCtxWithTags :: Tags -> Context String
+postCtxWithTags tags = tagsField "tags" tags `mappend` postCtx
