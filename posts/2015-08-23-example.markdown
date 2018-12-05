@@ -1,5 +1,6 @@
 ---
 title: example post
+tags: foo, bar1, pi
 ---
 
 Mauris in lorem nisl. Maecenas tempus facilisis ante, eget viverra nisl
