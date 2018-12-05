@@ -1,5 +1,6 @@
 ---
 title: example post
+author: me
 tags: foo, bar1, pi
 ---
 
